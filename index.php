@@ -1,9 +1,22 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 require 'function.php';
 require 'check.php';
 
 $user_role = isset($_SESSION['role']) ? $_SESSION['role'] : '';
 $user_name = isset($_SESSION['name']) ? $_SESSION['name'] : '';
+
+// Debug information
+echo "<!-- Debug Info:
+Session: " . print_r($_SESSION, true) . "
+Role: $user_role
+-->";
 ?>
 
 <!DOCTYPE html>
@@ -21,7 +34,7 @@ $user_name = isset($_SESSION['name']) ? $_SESSION['name'] : '';
     </head>
     <body class="sb-nav-fixed">
         <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
-            <a class="navbar-brand" href="index.php">INVENTRONIK</a>
+            <a class="navbar-brand" href="index.php">CENTRAL ELEKTRONIK</a>
             <button class="btn btn-link btn-sm order-1 order-lg-0" id="sidebarToggle" href="#"><i class="fas fa-bars"></i></button>
             <div class="ml-auto text-white">
                 Welcome, <?=$user_name;?> (<?=$user_role;?>)
@@ -32,25 +45,50 @@ $user_name = isset($_SESSION['name']) ? $_SESSION['name'] : '';
                 <nav class="sb-sidenav accordion sb-sidenav-dark" id="sidenavAccordion">
                     <div class="sb-sidenav-menu">
                         <div class="nav">
-                            <a class="nav-link" href="index.php">
+                            <?php if($user_role === 'admin'): ?>
+                            <a class="nav-link" href="dashboard.php">
                                 <div class="sb-nav-link-icon"><i class="fas fa-tachometer-alt"></i></div>
+                                Dashboard
+                            </a>
+                            <?php endif; ?>
+                            <a class="nav-link" href="index.php">
+                                <div class="sb-nav-link-icon"><i class="fas fa-box"></i></div>
                                 Stock Barang
                             </a>
                             <?php if($user_role === 'admin'): ?>
                             <a class="nav-link" href="masuk.php">
-                                <div class="sb-nav-link-icon"><i class="fas fa-tachometer-alt"></i></div>
+                                <div class="sb-nav-link-icon"><i class="fas fa-download"></i></div>
                                 Barang Masuk
                             </a>
                             <a class="nav-link" href="keluar.php">
-                                <div class="sb-nav-link-icon"><i class="fas fa-tachometer-alt"></i></div>
+                                <div class="sb-nav-link-icon"><i class="fas fa-upload"></i></div>
                                 Barang Keluar
+                            </a>
+                            <a class="nav-link" href="log_riwayat_pemesanan.php">
+                                <div class="sb-nav-link-icon"><i class="fas fa-history"></i></div>
+                                Log Riwayat Pemesanan
                             </a>
                             <a class="nav-link" href="admin.php">
                                 <div class="sb-nav-link-icon"><i class="fas fa-users"></i></div>
-                                Kelola User
+                                Kelola Karyawan
+                            </a>
+                            <a class="nav-link" href="salary.php">
+                                <div class="sb-nav-link-icon"><i class="fas fa-money-bill"></i></div>
+                                Kelola Gaji
+                            </a>
+                            <?php endif; ?>
+                            <?php if($user_role === 'employee'): ?>
+                            <a class="nav-link" href="attendance.php">
+                                <div class="sb-nav-link-icon"><i class="fas fa-clock"></i></div>
+                                Absensi
+                            </a>
+                            <a class="nav-link" href="salary.php">
+                                <div class="sb-nav-link-icon"><i class="fas fa-money-bill"></i></div>
+                                Gaji
                             </a>
                             <?php endif; ?>
                             <a class="nav-link" href="logout.php">
+                                <div class="sb-nav-link-icon"><i class="fas fa-sign-out-alt"></i></div>
                                 Logout
                             </a>
                         </div>
@@ -102,7 +140,7 @@ $user_name = isset($_SESSION['name']) ? $_SESSION['name'] : '';
                                             
                                             <tbody>
                                                 <?php
-                                                $ambilsemuadatastock = mysqli_query($conn,"select * from barang");
+                                                $ambilsemuadatastock = mysqli_query($conn,"SELECT * FROM barang WHERE status = 'aktif'");
                                                 $i = 1;
                                                 while($data = mysqli_fetch_array($ambilsemuadatastock)){ 
                                                     $namabarang = $data['namabarang'];
@@ -127,9 +165,8 @@ $user_name = isset($_SESSION['name']) ? $_SESSION['name'] : '';
                                                     <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#edit<?=$idbarang;?>">
                                                         Edit
                                                     </button>
-                                                    <input type="hidden" name="idbarangygmaudihapus" value="<?=$idbarang;?>">
                                                     <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#delete<?=$idbarang;?>">
-                                                        delete
+                                                        Delete
                                                     </button>
                                                     <?php endif; ?>
                                                     </td>
@@ -178,10 +215,10 @@ $user_name = isset($_SESSION['name']) ? $_SESSION['name'] : '';
                                                         
                                                         <form method="post">
                                                         <div class="modal-body">
-                                                        Apakah anda yakin ingin menghapus barang <?=$model;?>?
-                                                        <br><br>
+                                                        <p>Apakah anda yakin ingin menghapus barang <?=$namabarang;?>?</p>
                                                         <input type="hidden" name="idbarang" value="<?=$idbarang;?>">
-                                                        <button type="submit" class="btn btn-primary" name="hapusbarang">Hapus</button>
+                                                        <button type="submit" class="btn btn-danger" name="hapusbarang">Hapus</button>
+                                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
                                                         </form> 
                                                         </div>
                                                         
@@ -222,28 +259,25 @@ $user_name = isset($_SESSION['name']) ? $_SESSION['name'] : '';
             
                 
                 <div class="modal-header">
-                <h4 class="modal-title">Tambah Barang Masuk</h4>
+                <h4 class="modal-title">Tambah Barang</h4>
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
                 </div>
                 
                 <form method="post">
                 <div class="modal-body">
-                <input type = "text" name="namabarang" placeholder="Nama Barang" class="form-control"required>
+                <input type="text" name="namabarang" placeholder="Nama Barang" class="form-control" required>
                 <br>
-                <input type = "text" name="merek" placeholder="Merek Barang" class="form-control"required>
+                <input type="text" name="merek" placeholder="Merek Barang" class="form-control" required>
                 <br>
-                <input type = "text" name="model" placeholder="Model Barang" class="form-control"required>
+                <input type="text" name="model" placeholder="Model Barang" class="form-control" required>
                 <br>
-                <input type="number" name="stock" placeholder="Stock Barang" class="form-control"required>
+                <input type="number" name="stock" placeholder="Stock Barang" class="form-control" required>
                 <br>
-                <input type="number" name="harga" placeholder="Harga Barang" class="form-control"required>
+                <input type="number" name="harga" placeholder="Harga Barang" class="form-control" required>
                 <br>  
                 <button type="submit" class="btn btn-primary" name="Addnewbarang">Submit</button>
                 </form> 
                 </div>
-                
-                
-               
             </div>
             </div>
         </div>

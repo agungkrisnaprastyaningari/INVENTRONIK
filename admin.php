@@ -3,6 +3,12 @@ require 'function.php';
 require 'check.php';
 
 // Check if user is admin
+if (!isAdmin()) {
+    header('location:index.php');
+    exit();
+}
+
+// Check if user is admin
 $email = $_SESSION['email'];
 $check_admin = mysqli_query($conn, "SELECT role FROM user WHERE email = '$email'");
 $user_role = mysqli_fetch_array($check_admin)['role'];
@@ -56,7 +62,7 @@ if(isset($_POST['deleteuser'])) {
     </head>
     <body class="sb-nav-fixed">
         <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
-            <a class="navbar-brand" href="index.php">INVENTRONIK</a>
+            <a class="navbar-brand" href="index.php">CENTRAL ELEKTRONIK</a>
             <button class="btn btn-link btn-sm order-1 order-lg-0" id="sidebarToggle" href="#"><i class="fas fa-bars"></i></button>
         </nav>
         <div id="layoutSidenav">

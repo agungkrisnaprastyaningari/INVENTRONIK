@@ -3,11 +3,7 @@ require 'function.php';
 require 'check.php';
 
 // Check if user is admin
-$email = $_SESSION['email'];
-$check_admin = mysqli_query($conn, "SELECT role FROM user WHERE email = '$email'");
-$user_role = mysqli_fetch_array($check_admin)['role'];
-
-if ($user_role !== 'admin') {
+if (!isAdmin()) {
     header('location:index.php');
     exit();
 }
@@ -28,7 +24,7 @@ if ($user_role !== 'admin') {
     </head>
     <body class="sb-nav-fixed">
         <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
-            <a class="navbar-brand" href="index.php">INVENTRONIK</a>
+            <a class="navbar-brand" href="index.php">CENTRAL ELEKTRONIK</a>
             <button class="btn btn-link btn-sm order-1 order-lg-0" id="sidebarToggle" href="#"><i class="fas fa-bars"></i></button>
             
             
@@ -87,7 +83,7 @@ if ($user_role !== 'admin') {
                                                 <th>model</th>
                                                 <th>Quantity</th>
                                                 <th>penerima</th>
-                                                <th>stock </th>
+                                                <th>harga jual </th>
                                             </tr>
                                         </thead>
                                         
@@ -102,7 +98,7 @@ if ($user_role !== 'admin') {
                                                 $model = $data['model'];
                                                 $qty = $data['qty'];
                                                 $penerima = $data['penerima'];
-                                                $stock = $data['stock'];
+                                                $harga_jual = $data['harga'];
 
                                             ?>
 
@@ -112,7 +108,7 @@ if ($user_role !== 'admin') {
                                                 <td><?=$model;?></td>
                                                 <td><?=$qty;?></td>
                                                 <td><?=$penerima;?></td>
-                                                <td><?=$stock;?></td>
+                                                <td><?=$harga_jual;?></td>
                                             </tr>
                                             <?php
                                             };

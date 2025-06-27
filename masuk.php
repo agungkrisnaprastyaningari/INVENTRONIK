@@ -3,6 +3,12 @@ require 'function.php';
 require 'check.php';
 
 // Check if user is admin
+if (!isAdmin()) {
+    header('location:index.php');
+    exit();
+}
+
+// Check if user is admin
 $email = $_SESSION['email'];
 $check_admin = mysqli_query($conn, "SELECT role FROM user WHERE email = '$email'");
 $user_role = mysqli_fetch_array($check_admin)['role'];
@@ -28,7 +34,7 @@ if ($user_role !== 'admin') {
     </head>
     <body class="sb-nav-fixed">
         <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
-            <a class="navbar-brand" href="index.php">INVENTRONIK</a>
+            <a class="navbar-brand" href="index.php">CENTRAL ELEKTRONIK</a>
             <button class="btn btn-link btn-sm order-1 order-lg-0" id="sidebarToggle" href="#"><i class="fas fa-bars"></i></button>
             
             
@@ -74,7 +80,7 @@ if ($user_role !== 'admin') {
                         <div class="card mb-4">
                             <div class="card-header">
                                 <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#myModal">
-                                    Tambah Barang
+                                    Order Supplier
                                 </button>
                             </div>
                             <div class="card-body">
@@ -86,21 +92,25 @@ if ($user_role !== 'admin') {
                                                 <th>Nama Barang</th>
                                                 <th>Model</th>
                                                 <th>Quantity</th>
-                                                <th>pemasok</th>
-                                                
+                                                <th>Total Harga</th>
+                                                <th>Pemasok</th>
+                                                <th>Status Pembayaran</th>
+                                                <th>Aksi</th>
                                             </tr>
                                         </thead>
                                         
                                         <tbody>
                                         <?php
-                                            $ambilsemuadatastock = mysqli_query($conn,"select * from masuk,barang b where b.idbarang = masuk.idbarang");
+                                            $ambilsemuadatastock = mysqli_query($conn,"select m.*, b.namabarang, b.model, b.harga from masuk m, barang b where b.idbarang = m.idbarang AND m.status_pembayaran = 'Pending'");
                                             while($data = mysqli_fetch_array($ambilsemuadatastock)){
                                                 $tanggal = $data['tanggal'];
                                                 $namabarang = $data['namabarang'];
                                                 $model = $data['model'];
                                                 $qty = $data['qty'];
                                                 $pemasok = $data['pemasok'];
-
+                                                $total_harga = $data['total_harga'];
+                                                $status_pembayaran = $data['status_pembayaran'];
+                                                $idmasuk = $data['idmasuk'];
                                             ?>
 
                                             <tr>
@@ -108,8 +118,55 @@ if ($user_role !== 'admin') {
                                                 <td><?=$namabarang;?></td>
                                                 <td><?=$model;?></td>
                                                 <td><?=$qty;?></td>
+                                                <td>Rp <?=number_format($total_harga,0,',','.');?></td>
                                                 <td><?=$pemasok;?></td>
+                                                <td>
+                                                    <span class="badge badge-<?=$status_pembayaran == 'Paid' ? 'success' : 'warning'?>">
+                                                        <?=$status_pembayaran;?>
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <a href="generate_invoice.php?id=<?=$idmasuk;?>" class="btn btn-info btn-sm" target="_blank">
+                                                        <i class="fas fa-file-invoice"></i> Invoice
+                                                    </a>
+                                                    <?php if($status_pembayaran == 'Pending'): ?>
+                                                    <button type="button" class="btn btn-success btn-sm" data-toggle="modal" data-target="#payment<?=$idmasuk;?>">
+                                                        <i class="fas fa-money-bill"></i> Pay
+                                                    </button>
+                                                    <?php endif; ?>
+                                                </td>
                                             </tr>
+
+                                            <!-- Payment Modal -->
+                                            <div class="modal fade" id="payment<?=$idmasuk;?>">
+                                                <div class="modal-dialog">
+                                                    <div class="modal-content">
+                                                        <div class="modal-header">
+                                                            <h4 class="modal-title">Process Payment</h4>
+                                                            <button type="button" class="close" data-dismiss="modal">&times;</button>
+                                                        </div>
+                                                        <form method="post">
+                                                            <div class="modal-body">
+                                                                <input type="hidden" name="idmasuk" value="<?=$idmasuk;?>">
+                                                                <div class="form-group">
+                                                                    <label>Total Payment</label>
+                                                                    <input type="text" class="form-control" value="Rp <?=number_format($total_harga,0,',','.');?>" readonly>
+                                                                </div>
+                                                                <div class="form-group">
+                                                                    <label>Payment Method</label>
+                                                                    <select name="metode_pembayaran" class="form-control" required>
+                                                                        <option value="">Select Payment Method</option>
+                                                                        <option value="Cash">Cash</option>
+                                                                        <option value="Bank Transfer">Bank Transfer</option>
+                                                                        <option value="Credit Card">Credit Card</option>
+                                                                    </select>
+                                                                </div>
+                                                                <button type="submit" class="btn btn-success" name="process_payment">Process Payment</button>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
                                             <?php
                                             };
                                             ?>
@@ -145,6 +202,25 @@ if ($user_role !== 'admin') {
         <script src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js" crossorigin="anonymous"></script>
         <script src="https://cdn.datatables.net/1.10.20/js/dataTables.bootstrap4.min.js" crossorigin="anonymous"></script>
         <script src="assets/demo/datatables-demo.js"></script>
+        
+        <script>
+        function hitungTotal() {
+            var select = document.querySelector('select[name="namabarang"]');
+            var qty = document.getElementById('qty').value;
+            var option = select.options[select.selectedIndex];
+            var harga = option.getAttribute('data-harga');
+            
+            if(qty && harga) {
+                var total = parseInt(qty) * parseFloat(harga);
+                document.getElementById('total_harga').value = total;
+            }
+        }
+        
+        // Calculate total when product selection changes
+        document.querySelector('select[name="namabarang"]').addEventListener('change', hitungTotal);
+        // Calculate total when quantity changes
+        document.getElementById('qty').addEventListener('change', hitungTotal);
+        </script>
     </body>
     <div class="modal fade" id="myModal">
         <div class="modal-dialog">
@@ -152,42 +228,39 @@ if ($user_role !== 'admin') {
         
             
             <div class="modal-header">
-            <h4 class="modal-title">Tambah Barang Masuk</h4>
+            <h4 class="modal-title">Order Supplier</h4>
             <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
             
             <form method="post">
             <div class="modal-body">
-            <select name="namabarang" class="form-control"required>
+            <select name="namabarang" class="form-control" required>
             <option value="">-- Pilih Barang --</option>
             <?php
             $ambilsemuadata = mysqli_query($conn,"SELECT * FROM barang");
             while($fetcharray = mysqli_fetch_array($ambilsemuadata)){
                 $namabarang = $fetcharray['namabarang'];
                 $idbarang = $fetcharray['idbarang'];
+                $harga = $fetcharray['harga'];
             ?>
-                <option value="<?=$idbarang;?>"><?=$namabarang;?></option>
+                <option value="<?=$idbarang;?>" data-harga="<?=$harga;?>"><?=$namabarang;?></option>
             <?php
             }
             ?>
             </select>
-            <select name = "model" class="form-control"required>    
-            <option value="">-- Pilih Model --</option>
-            <?php
-            $ambilsemuadata = mysqli_query($conn,"SELECT * FROM barang");
-            while($fetcharray = mysqli_fetch_array($ambilsemuadata)){
-                $model = $fetcharray['model'];
-                $idbarang = $fetcharray['idbarang'];
-            ?>
-                <option value="<?=$idbarang;?>"><?=$model;?></option>
-            <?php
-            }
-            ?>
-            </select>
-            <br>  
-            <input type="text" name="pemasok" placeholder="Pemasok Barang" class="form-control"required>
             <br>
-            <input type="number" name="qty" placeholder="Quantity Barang" class="form-control"required>
+            <input type="text" name="pemasok" placeholder="Pemasok Barang" class="form-control" required>
+            <br>
+            <input type="number" name="qty" id="qty" placeholder="Quantity Barang" class="form-control" required onchange="hitungTotal()">
+            <br>
+            <input type="number" name="total_harga" id="total_harga" placeholder="Total Harga" class="form-control" readonly>
+            <br>
+            <select name="metode_pembayaran" class="form-control" required>
+                <option value="">-- Pilih Metode Pembayaran --</option>
+                <option value="Cash">Cash</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Credit Card">Credit Card</option>
+            </select>
             <br>
             <button type="submit" class="btn btn-primary" name="barangmasuk">Submit</button>
             </form> 
